@@ -1,3 +1,4 @@
+using RootRacer.Utils;
 using Sonity;
 using UnityEngine;
 
@@ -48,41 +49,47 @@ namespace RootRacer
 
 		public CircleCollider2D CircleCollider2D { get; set; }
 
+		private static readonly int PlayerColor = Shader.PropertyToID("_PlayerColor");
+		private static readonly int AnimationMultiplier = Animator.StringToHash("AnimationMultiplier");
+
 		private void Awake()
 		{
-			startPosition = transform.position;
-			baseSizeScale = transform.localScale;
+			var transformReference = transform;
+			startPosition = transformReference.position;
+			baseSizeScale = transformReference.localScale;
+
 			camera = FindObjectOfType<Camera>();
 			gameManager = FindObjectOfType<GameManager>();
 			headAnimator = GetComponentInChildren<Animator>();
 			lineRenderer = GetComponentInChildren<LineRenderer>();
+
 			GameManager.Instance.AddPlayer(this);
 
 			CircleCollider2D = GetComponent<CircleCollider2D>();
 			CollisionSystemUtil.RegisterPlayer(CircleCollider2D);
-			gameManager.OnGamePause += OnPause;
-			gameManager.OnGameUnPause += OnUnPause;
+
+			RegisterPauseEvents();
 		}
 
-		void Start()
+		private void Start()
 		{
 			downSpeed = gameManager.GetTargetSpeed();
 			lineRenderer.positionCount = linePositions;
-			lineRenderer.material.SetColor("_PlayerColor", playerColor);
+			lineRenderer.material.SetColor(PlayerColor, playerColor);
 			ResetPlayer();
 		}
 
-		void OnPause()
+		private void OnPause()
 		{
 			footstepsSoundEvent.Stop(transform);
 		}
 
-		void OnUnPause()
+		private void OnUnPause()
 		{
 			footstepsSoundEvent.Play(transform);
 		}
 
-		void Update()
+		private void Update()
 		{
 			if (gameManager.isPaused)
 			{
@@ -95,7 +102,7 @@ namespace RootRacer
 
 			var downSpeed = gameManager.GetTargetSpeed();
 			var aMulti = (downSpeed + baseEatAnimationSpeed) / baseEatAnimationSpeed;
-			headAnimator.SetFloat("AnimationMultiplier", aMulti);
+			headAnimator.SetFloat(AnimationMultiplier, aMulti);
 
 			HandleHorizontalMovement(deltaTime);
 			HandleVerticalMovement(deltaTime);
@@ -122,6 +129,7 @@ namespace RootRacer
 
 		private void EffectTimers(float deltaTime)
 		{
+			// Todo: Effects should be turned into a list of objects that handle themselves.
 			if (invertControls)
 			{
 				invertTimer -= deltaTime;
@@ -154,6 +162,17 @@ namespace RootRacer
 		private void OnDestroy()
 		{
 			CollisionSystemUtil.UnregisterPlayer(this);
+			UnregisterPauseEvents();
+		}
+
+		private void RegisterPauseEvents()
+		{
+			gameManager.OnGamePause += OnPause;
+			gameManager.OnGameUnPause += OnUnPause;
+		}
+
+		private void UnregisterPauseEvents()
+		{
 			gameManager.OnGamePause -= OnPause;
 			gameManager.OnGameUnPause -= OnUnPause;
 		}
@@ -169,19 +188,39 @@ namespace RootRacer
 
 		public void ResetPlayer()
 		{
-			transform.position = startPosition;
-			downSpeed = gameManager.GetTargetSpeed();
+			ResetTransform();
+			ResetSpeed();
+			ResetStatusEffects();
+			ResetLineRenderers();
+		}
+
+		private void ResetLineRenderers()
+		{
 			var pos = transform.position;
 			for (var i = 0; i < lineRenderer.positionCount; i++)
 			{
 				lineRenderer.SetPosition(i, pos);
 			}
+		}
 
-			hasShield = false;
+		private void ResetTransform()
+		{
+			var transformReference = transform;
+			transformReference.position = startPosition;
+			transformReference.localScale = baseSizeScale;
+		}
+
+		private void ResetSpeed()
+		{
+			downSpeed = gameManager.GetTargetSpeed();
+		}
+
+		private void ResetStatusEffects()
+		{
 			invertControls = false;
 			hasSizeUp = false;
-			transform.localScale = baseSizeScale;
 
+			hasShield = false;
 			if (shieldObject)
 			{
 				Destroy(shieldObject);
@@ -198,7 +237,6 @@ namespace RootRacer
 
 			if (hasShield)
 			{
-				
 				DestroyShield();
 				return;
 			}
@@ -227,16 +265,18 @@ namespace RootRacer
 		public void Shield()
 		{
 			shieldTimer = shieldTime;
-            if (!hasShield)
-            {
+			if (!hasShield)
+			{
 				shieldObject = Instantiate(GameManager.ShieldPrefab, transform);
-            }
+			}
+
 			hasShield = true;
 		}
-		void DestroyShield()
-        {
+
+		private void DestroyShield()
+		{
 			Destroy(shieldObject);
-			Destroy(Instantiate(shieldPop,transform),1f);
+			Destroy(Instantiate(shieldPop, transform), 1f);
 			hasShield = false;
 		}
 
@@ -256,8 +296,10 @@ namespace RootRacer
 		{
 			var targetSpeed = gameManager.GetTargetSpeed();
 
-			if (downSpeed == targetSpeed) // floating point comparision
+			var isCloseEnough = downSpeed.IsCloseEnough(targetSpeed, acceptedDifference: 0.001f);
+			if (isCloseEnough)
 			{
+				downSpeed = targetSpeed;
 				return;
 			}
 
@@ -270,7 +312,8 @@ namespace RootRacer
 			{
 				lineRenderer.SetPosition(
 					index: i,
-					position: lineRenderer.GetPosition(i) + new Vector3(0, gameManager.GetTargetSpeed() * 100 * deltaTime, 0));
+					position: lineRenderer.GetPosition(i) +
+					          new Vector3(0, gameManager.GetTargetSpeed() * 100 * deltaTime, 0));
 			}
 
 			var lastPoint = lineRenderer.GetPosition(lineRenderer.positionCount - 1);

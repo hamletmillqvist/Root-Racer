@@ -7,8 +7,7 @@ public class ShowDepthBehaviour : MonoBehaviour
 {
 	private Text legacyText;
 	private TextMeshProUGUI tmpText;
-	bool useLegacyText = false;
-
+	private bool useLegacyText;
 
 	private void Awake()
 	{
@@ -40,7 +39,7 @@ public class ShowDepthBehaviour : MonoBehaviour
 		tmpText.text = GetDepth();
 	}
 
-	string GetDepth()
+	private string GetDepth()
 	{
 		return (-GameManager.Depth).ToString("0.#m");
 	}

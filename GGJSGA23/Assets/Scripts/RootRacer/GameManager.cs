@@ -7,30 +7,24 @@ namespace RootRacer
 	{
 		public delegate void GamePauseDelegate();
 
-		// Events
 		public event GamePauseDelegate OnGamePause;
 		public event GamePauseDelegate OnGameUnPause;
 
-		// Static fields
 		public static GameManager Instance;
 		public static Camera MainCamera;
 
-		// Static Getters
 		public static IReadOnlyList<PlayerController> Players => Instance.players;
 		public static float Depth => Instance.depth;
 		public static GameObject ShieldPrefab => Instance.shieldPrefab;
 
-		// Public fields
 		public DepthMusicSO gameDepthMusic;
 		public MeshRenderer worldMeshRenderer;
 		public bool isPaused;
 
-		// Private fields (Shown in editor)
 		[SerializeField] private float startSpeed = 0.05f;
 		[SerializeField] private float speedIncrease = 0.1f;
 		[SerializeField] private GameObject shieldPrefab;
 
-		// Private fields (hidden in editor)
 		private Material worldMaterial;
 		private float depth;
 		private float currentSpeed = 0.5f;
@@ -67,14 +61,14 @@ namespace RootRacer
 			}
 		}
 
-		void Start()
+		private void Start()
 		{
 			shaderPropID = worldMaterial.shader.GetPropertyNameId(worldMaterial.shader.FindPropertyIndex("_Position"));
 
 			StartGame();
 		}
 
-		void Update()
+		private void Update()
 		{
 			if (isPaused)
 			{
@@ -103,7 +97,7 @@ namespace RootRacer
 			{
 				return;
 			}
-			
+
 			gameDepthMusic.gameDepthMusic[currentlyPlayingDepthMusic].music.Stop2D();
 			gameDepthMusic.gameDepthMusic[selectedIndex].music.Play2D();
 			currentlyPlayingDepthMusic = selectedIndex;
@@ -125,17 +119,15 @@ namespace RootRacer
 			UnPauseGame();
 		}
 
-		void UnPauseGame()
+		private void UnPauseGame()
 		{
 			Time.timeScale = 1;
 			isPaused = false;
 			OnGameUnPause?.Invoke();
 			gameDepthMusic.gameDepthMusic[currentlyPlayingDepthMusic].music.Play2D();
-
-			//menuManager.ShowGameOver();
 		}
 
-		void PauseGame()
+		private void PauseGame()
 		{
 			OnGamePause?.Invoke();
 			gameDepthMusic.gameDepthMusic[currentlyPlayingDepthMusic].music.Stop2D();
